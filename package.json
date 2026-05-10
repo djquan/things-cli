@@ -1,6 +1,7 @@
 {
   "name": "things-cli",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "things-cli": "./src/cli.ts",
