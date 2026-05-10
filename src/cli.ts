@@ -48,6 +48,10 @@ export async function runCommand(store: ThingsStore, parsed: ParsedArgs): Promis
       return store.anytime();
     case "upcoming":
       return store.upcoming();
+    case "completed":
+      return store.completed(dateRangeOptions(parsed));
+    case "logbook":
+      return store.logbook(dateRangeOptions(parsed));
     case "projects":
       return store.projects();
     case "areas":
@@ -179,6 +183,14 @@ function numberFlag(parsed: ParsedArgs, name: string, fallback: number): number 
   return parsedValue;
 }
 
+function dateRangeOptions(parsed: ParsedArgs): { since?: string; until?: string; includeCanceled?: boolean } {
+  return {
+    since: stringFlag(parsed, "since"),
+    until: stringFlag(parsed, "until"),
+    includeCanceled: booleanFlag(parsed, "include-canceled")
+  };
+}
+
 function booleanFlag(parsed: ParsedArgs, name: string): boolean {
   return parsed.flags[name] === true || parsed.flags[name] === "true";
 }
@@ -204,7 +216,9 @@ Read commands:
   help
   doctor [--db path]
   snapshot [--include-trashed] [--raw] [--db path]
-  today | inbox | anytime | upcoming | projects | areas | tags
+  today | inbox | anytime | upcoming | completed | logbook | projects | areas | tags
+  completed [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--include-canceled]
+  logbook [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--include-canceled]
   show <id>
   search <query>
   context [--budget 12000]
@@ -216,12 +230,14 @@ Read command meaning:
   inbox        Open to-dos/projects in Inbox.
   anytime      Open to-dos/projects Things shows in Anytime.
   upcoming     Open to-dos/projects Things shows in Upcoming.
+  completed    Complete, audit-safe read of completed to-dos/projects filtered by stop date.
+  logbook      Alias-style logbook read for weekly reviews; completed by default.
   projects     All project records.
   areas        Areas with attached tags.
   tags         Tags.
   show <id>    One task/project/heading by Things id, including raw fields.
   search       Case-insensitive search across title, notes, area, project, heading, tags, checklist.
-  context      Compact LLM-oriented payload containing today, inbox, anytime, upcoming, projects.
+  context      Lossy LLM briefing payload containing today, inbox, anytime, upcoming, projects.
 
 Important JSON fields for LLMs:
   id                    Stable Things id to pass to show/update/complete/cancel/reveal.
@@ -239,6 +255,12 @@ Important JSON fields for LLMs:
   projectTitle          Parent project title when present.
   headingTitle          Parent heading title when present.
   checklist             Checklist items with open/completed status.
+
+Context completeness:
+  context is not audit-safe. It can omit items to fit --budget.
+  context output includes complete=false, auditSafe=false, lossy=true, and per-section
+  totals with shown/omitted/truncated counts.
+  Use completed/logbook for complete stopped-task history. Use snapshot for full export.
 
 Things list caveats:
   Today is an overlay, not a mutually exclusive bucket. A task can be both Today and Anytime.
@@ -264,6 +286,8 @@ Environment:
 
 Examples:
   things today
+  things logbook --since 2026-05-04 --until 2026-05-10
+  things completed --since 2026-05-04 --include-canceled
   things show <id>
   things update --id <id> --append-notes "New context"
   things update --id <id> --append-notes "New context" --execute

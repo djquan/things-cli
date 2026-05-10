@@ -60,6 +60,8 @@ export function createFixtureDatabase(): string {
 
   const today = todayIsoDate();
   const future = futureIsoDate();
+  const stoppedThisWeek = Date.parse("2026-05-08T12:00:00Z") / 1000;
+  const stoppedEarlier = Date.parse("2026-04-28T12:00:00Z") / 1000;
 
   insertTask(db, {
     uuid: "project-1",
@@ -164,9 +166,36 @@ export function createFixtureDatabase(): string {
     title: "Completed task",
     notes: null,
     start: 1,
+    stopDate: stoppedThisWeek,
     area: null,
     todayIndex: null,
     index: 4
+  });
+
+  insertTask(db, {
+    uuid: "task-canceled",
+    type: 0,
+    status: 2,
+    title: "Canceled task",
+    notes: null,
+    start: 1,
+    stopDate: stoppedThisWeek,
+    area: null,
+    todayIndex: null,
+    index: 9
+  });
+
+  insertTask(db, {
+    uuid: "task-done-earlier",
+    type: 0,
+    status: 3,
+    title: "Earlier completed task",
+    notes: null,
+    start: 1,
+    stopDate: stoppedEarlier,
+    area: null,
+    todayIndex: null,
+    index: 10
   });
 
   insertTask(db, {
@@ -206,6 +235,7 @@ function insertTask(
     notes: string | null;
     start: number;
     startDate?: number | null;
+    stopDate?: number | null;
     reminderTime?: number | null;
     deadline?: number | null;
     area?: string | null;
@@ -246,7 +276,7 @@ function insertTask(
       1778396500,
       $type,
       $status,
-      null,
+      $stopDate,
       0,
       $title,
       $notes,
@@ -266,6 +296,7 @@ function insertTask(
       uuid: values.uuid,
       type: values.type,
       status: values.status,
+      stopDate: values.stopDate ?? null,
       title: values.title,
       notes: values.notes,
       start: values.start,

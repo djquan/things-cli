@@ -19,8 +19,10 @@ test("help explains LLM-facing Things semantics", () => {
   const help = helpText();
 
   expect(help).toContain("All command output is JSON");
+  expect(help).toContain("completed [--since YYYY-MM-DD]");
   expect(help).toContain("lists                 Built-in list memberships");
   expect(help).toContain("scheduledDate");
+  expect(help).toContain("context is not audit-safe");
   expect(help).toContain("Deadline alone does not make an item Today");
   expect(help).toContain("The CLI never writes directly to the Things SQLite database");
 });
@@ -48,6 +50,16 @@ test("runs read commands against a real SQLite fixture", async () => {
 
   expect(Array.isArray(output)).toBe(true);
   expect(JSON.stringify(output)).toContain("Write launch memo");
+});
+
+test("runs completed command with date filters", async () => {
+  const store = new ThingsStore({ databasePath: createFixtureDatabase() });
+  const output = await runCommand(store, parseArgs(["completed", "--since", "2026-05-01", "--until", "2026-05-10"]));
+  store.close();
+
+  expect(JSON.stringify(output)).toContain("Completed task");
+  expect(JSON.stringify(output)).not.toContain("Earlier completed task");
+  expect(JSON.stringify(output)).not.toContain("Canceled task");
 });
 
 test("builds and redacts Things URLs", () => {

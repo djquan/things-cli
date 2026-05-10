@@ -189,6 +189,14 @@ export class ThingsStore {
     return this.tasks().filter((task) => task.status === "open" && isListItem(task) && task.lists.includes("Upcoming"));
   }
 
+  completed(options: { since?: string; until?: string; includeCanceled?: boolean } = {}): Task[] {
+    return this.stoppedTasks(options);
+  }
+
+  logbook(options: { since?: string; until?: string; includeCanceled?: boolean } = {}): Task[] {
+    return this.stoppedTasks(options);
+  }
+
   projects(): Task[] {
     return this.tasks().filter((task) => task.kind === "project");
   }
@@ -225,11 +233,15 @@ export class ThingsStore {
     const today = this.today();
     const inbox = this.inbox();
     const anytime = this.anytime();
-    const upcoming = this.upcoming().slice(0, 50);
+    const upcoming = this.upcoming();
     const openProjects = this.projects().filter((task) => task.status === "open");
     const payload = {
       generatedAt: new Date().toISOString(),
       tokenBudget,
+      complete: false,
+      auditSafe: false,
+      lossy: true,
+      warning: "This is a lossy briefing payload. Use snapshot, logbook, or completed for audit-safe reads.",
       counts: this.counts(),
       today,
       inbox,
@@ -239,6 +251,15 @@ export class ThingsStore {
     };
 
     return trimForBudget(payload, tokenBudget);
+  }
+
+  private stoppedTasks(options: { since?: string; until?: string; includeCanceled?: boolean }): Task[] {
+    validateIsoDateOption("since", options.since);
+    validateIsoDateOption("until", options.until);
+    const allowedStatuses = new Set(options.includeCanceled ? ["completed", "canceled"] : ["completed"]);
+    return this.tasks({ includeTrashed: true })
+      .filter((task) => !task.trashed && isListItem(task) && allowedStatuses.has(task.status) && isWithinDateRange(task.stoppedAt, options))
+      .sort(compareStoppedTasks);
   }
 
   private taskRows(includeTrashed: boolean): TaskRow[] {
@@ -477,16 +498,35 @@ function sortTagMap(input: Map<string, Tag[]>): Map<string, Tag[]> {
   return input;
 }
 
+function validateIsoDateOption(name: string, value: string | undefined): void {
+  if (value != null && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`--${name} must be YYYY-MM-DD`);
+  }
+}
+
+function isWithinDateRange(stoppedAt: string | null, options: { since?: string; until?: string }): boolean {
+  if (stoppedAt == null) {
+    return false;
+  }
+
+  const stoppedDate = stoppedAt.slice(0, 10);
+  return (options.since == null || stoppedDate >= options.since) && (options.until == null || stoppedDate <= options.until);
+}
+
+function compareStoppedTasks(left: Task, right: Task): number {
+  return (right.stoppedAt ?? "").localeCompare(left.stoppedAt ?? "") || left.title.localeCompare(right.title);
+}
+
 function trimForBudget<T extends Record<string, unknown>>(payload: T, tokenBudget: number): T {
   const maxCharacters = Math.max(1000, tokenBudget * 4);
-  let output = payload;
+  let output = attachContextSections(payload);
   while (JSON.stringify(output).length > maxCharacters) {
     const next = { ...output } as Record<string, unknown>;
     for (const key of ["openProjects", "upcoming", "anytime", "inbox", "today"]) {
       const value = next[key];
       if (Array.isArray(value) && value.length > 1) {
         next[key] = value.slice(0, Math.ceil(value.length / 2));
-        output = next as T;
+        output = attachContextSections(next) as T;
         break;
       }
     }
@@ -501,4 +541,38 @@ function trimForBudget<T extends Record<string, unknown>>(payload: T, tokenBudge
     }
   }
   return output;
+}
+
+function attachContextSections<T extends Record<string, unknown>>(payload: T): T {
+  const previousSections = isRecord(payload.sections) ? payload.sections : {};
+  const sections = Object.fromEntries(
+    ["today", "inbox", "anytime", "upcoming", "openProjects"].map((key) => {
+      const items = payload[key];
+      const total = sectionTotal(previousSections[key], items);
+      const shown = Array.isArray(items) ? items.length : 0;
+      return [
+        key,
+        {
+          total,
+          shown,
+          omitted: Math.max(0, total - shown),
+          truncated: shown < total
+        }
+      ];
+    })
+  );
+
+  return { ...payload, sections } as T;
+}
+
+function sectionTotal(previous: unknown, items: unknown): number {
+  if (isRecord(previous) && typeof previous.total === "number") {
+    return previous.total;
+  }
+
+  return Array.isArray(items) ? items.length : 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

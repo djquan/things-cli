@@ -103,6 +103,36 @@ test("does not treat undated Anytime tasks as Today", () => {
   expect(anytime.map((item) => item.id)).toContain("task-in-heading");
 });
 
+test("returns focused completed and logbook history by stop date", () => {
+  const store = new ThingsStore({ databasePath: createFixtureDatabase() });
+  const completed = store.completed({ since: "2026-05-01", until: "2026-05-10" });
+  const logbook = store.logbook({ since: "2026-05-01", until: "2026-05-10", includeCanceled: true });
+  store.close();
+
+  expect(completed.map((task) => task.id)).toEqual(["task-done"]);
+  expect(completed[0]?.stoppedAt?.slice(0, 10)).toBe("2026-05-08");
+  expect(logbook.map((task) => task.id).sort()).toEqual(["task-canceled", "task-done"]);
+});
+
+test("context reports lossy completeness and per-section omission counts", () => {
+  const store = new ThingsStore({ databasePath: createFixtureDatabase() });
+  const context = store.context(1) as {
+    complete: boolean;
+    auditSafe: boolean;
+    lossy: boolean;
+    sections: Record<string, { total: number; shown: number; omitted: number; truncated: boolean }>;
+    upcoming: unknown[];
+  };
+  store.close();
+
+  expect(context.complete).toBe(false);
+  expect(context.auditSafe).toBe(false);
+  expect(context.lossy).toBe(true);
+  expect(context.sections.upcoming?.total).toBe(4);
+  expect(context.sections.upcoming?.shown).toBe(context.upcoming.length);
+  expect(context.sections.upcoming?.omitted).toBe(4 - context.upcoming.length);
+});
+
 test("returns focused list views for LLM ingestion", () => {
   const store = new ThingsStore({ databasePath: createFixtureDatabase() });
   const today = store.today();

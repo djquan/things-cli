@@ -14,6 +14,8 @@ bun run src/cli.ts today
 bun run src/cli.ts inbox
 bun run src/cli.ts anytime
 bun run src/cli.ts upcoming
+bun run src/cli.ts completed --since 2026-05-04 --until 2026-05-10
+bun run src/cli.ts logbook --since 2026-05-04 --until 2026-05-10
 bun run src/cli.ts projects
 bun run src/cli.ts areas
 bun run src/cli.ts tags
@@ -23,6 +25,11 @@ bun run src/cli.ts context --budget 12000
 ```
 
 All read commands emit JSON.
+
+`context --budget` is a lossy briefing command, not an audit command. Its output
+includes `complete: false`, `auditSafe: false`, `lossy: true`, and per-section
+`shown`/`omitted` counts. Use `completed`, `logbook`, or `snapshot` when you need
+complete results.
 
 ## Things List Semantics
 
@@ -39,6 +46,21 @@ Task JSON exposes:
   back to `todayIndexReferenceDate` when `startDate` is empty.
 - `deadline`: the Things deadline. A deadline alone does not place an item in
   Today.
+
+## Completed History
+
+Use `completed` or `logbook` for weekly reviews and stopped-task audits. Both are
+complete focused reads over stopped to-dos/projects and filter by the Things
+stop date:
+
+```sh
+bun run src/cli.ts completed --since 2026-05-04 --until 2026-05-10
+bun run src/cli.ts logbook --since 2026-05-04 --until 2026-05-10
+bun run src/cli.ts logbook --since 2026-05-04 --include-canceled
+```
+
+By default, these commands return completed items only. Add `--include-canceled`
+to include canceled items.
 
 ## Mutations
 
