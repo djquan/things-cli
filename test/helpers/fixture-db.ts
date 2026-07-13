@@ -93,6 +93,19 @@ export function createFixtureDatabase(): string {
   });
 
   insertTask(db, {
+    uuid: "task-scheduled-today",
+    type: 0,
+    status: 0,
+    title: "Scheduled for today",
+    notes: null,
+    start: 2,
+    startDate: isoDateToThingsDate(today),
+    todayIndex: 2,
+    todayIndexReferenceDate: isoDateToThingsDate(today),
+    index: 3
+  });
+
+  insertTask(db, {
     uuid: "task-future-with-today-index",
     type: 0,
     status: 0,
@@ -104,7 +117,7 @@ export function createFixtureDatabase(): string {
     area: "area-work",
     todayIndex: 0,
     todayIndexReferenceDate: isoDateToThingsDate(future),
-    index: 3
+    index: 4
   });
 
   insertTask(db, {
@@ -116,7 +129,7 @@ export function createFixtureDatabase(): string {
     start: 0,
     area: null,
     todayIndex: null,
-    index: 4
+    index: 5
   });
 
   insertTask(db, {

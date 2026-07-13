@@ -487,6 +487,7 @@ function normalizeListMembership(row: TaskRow, scheduledDate: string | null): ("
     return scheduledDate != null && scheduledDate <= todayIsoDate() ? ["Today", "Anytime"] : ["Anytime"];
   }
   if (row.start === 2 && scheduledDate != null && scheduledDate > todayIsoDate()) return ["Upcoming"];
+  if (row.start === 2 && scheduledDate != null) return ["Today"];
   if (row.start === 2) return ["Someday"];
   return [];
 }

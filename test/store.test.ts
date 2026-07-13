@@ -61,6 +61,18 @@ test("does not treat stale todayIndex as Today membership", () => {
   expect(task?.isUpcoming).toBe(true);
 });
 
+test("includes scheduled tasks when their start date reaches today", () => {
+  const store = new ThingsStore({ databasePath: createFixtureDatabase() });
+  const task = store.show("task-scheduled-today");
+  const today = store.today();
+  store.close();
+
+  expect(task?.startDate).toBe(todayIsoDate());
+  expect(task?.lists).toEqual(["Today"]);
+  expect(task?.isToday).toBe(true);
+  expect(today.map((item) => item.id)).toContain("task-scheduled-today");
+});
+
 test("uses todayIndexReferenceDate as the scheduled date for upcoming rows", () => {
   const store = new ThingsStore({ databasePath: createFixtureDatabase() });
   const task = store.show("task-upcoming-reference-date");
@@ -141,7 +153,7 @@ test("returns focused list views for LLM ingestion", () => {
   const search = store.search("capture");
   store.close();
 
-  expect(today.map((task) => task.id)).toEqual(["task-today"]);
+  expect(today.map((task) => task.id)).toEqual(["task-today", "task-scheduled-today"]);
   expect(inbox.map((task) => task.id)).toEqual(["task-inbox"]);
   expect(upcoming.map((task) => task.id).sort()).toEqual([
     "project-1",
